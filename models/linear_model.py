@@ -12,7 +12,7 @@ class LinearRegression:
         if y.shape != (y.shape[0], 1):
             y_batch = y_batch.reshape((y.shape[0], 1))
         h_batch = np.dot(x, self.w)
-        loss, grad = MSELoss(y_pred=h_batch, y_true=y, train=train)
+        loss, grad = MSELoss(y_preds=h_batch, y_true=y, train=train)
         return loss, grad
 
     def fit(self, x_train, y_train, x_val=None, y_val=None, learning_rate=1e-6, epochs=300, batch_size=32, normal_eq=False, bias=True):
