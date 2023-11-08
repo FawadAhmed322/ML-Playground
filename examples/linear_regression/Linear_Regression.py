@@ -13,5 +13,5 @@ y = data['MedHouseVal']
 x_train, x_val, y_train, y_val = train_test_split(x, y, test_size=0.2, random_state=42)
 
 reg = LinearRegression()
-reg.fit(x_train.values, y_train.values)
+reg.fit(x_train.values, y_train.values, x_val=x_val.values, y_val=y_val.values)
 reg.plot()
