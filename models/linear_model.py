@@ -1,93 +1,110 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from fawad_torch.nn import Linear
 from losses.mse_loss import MSELoss
+import fawad_torch.optimizers as optim
 
 class LinearRegression:
     def __init__(self):
-        self.w = None
+        self.linear_layer = None
+        self.loss = MSELoss()
+        self.optimizer = None
         self.losses = []
         self.val_losses = []
+        self.mean_x, self.mean_y = None, None
 
-    def forward_on_batch(self, x, y, train=False):
-        if y.shape != (y.shape[0], 1):
-            y_batch = y_batch.reshape((y.shape[0], 1))
-        h_batch = np.dot(x, self.w)
-        loss, grad = MSELoss(y_preds=h_batch, y_true=y, train=train)
-        return loss, grad
+    def step(self, gen, train=True):
+        try:
+            x_batch, y_batch = next(gen)
+            y_preds_batch = self.linear_layer.forward(x_batch)
+            loss = self.loss.forward(y_preds_batch, y_batch)
+            grad = None
+            if train:
+                loss_grad = self.loss.backward()
+                grad = self.linear_layer.backward(loss_grad)
+            return loss, grad
+        except:
+            raise Exception()
+    
+    def normalize_data(self, x, y, validation=False):
+        if validation:
+            if self.mean_x is None or self.mean_y is None:
+                raise Exception("Training data must be normalized first to store mean and standard deviation")
+        elif not validation:
+            self.mean_x, self.std_x = x.mean(axis=0), x.std(axis=0)
+            self.mean_y, self.std_y = y.mean(axis=0), y.std(axis=0)
+        x_norm = (x - self.mean_x) / (self.std_x + np.finfo(float).eps)
+        y_norm = (y - self.mean_y) / (self.std_y + np.finfo(float).eps)
+        return (x_norm, y_norm)
+        
+    
+    def batch_generator(self, x, y, batch_size):
+        if batch_size is None:
+            yield x, y
+            return
+        index = 0
+        while index + batch_size <= x.shape[0]:
+            batch = (x[index: index+batch_size], y[index: index+batch_size])
+            index += batch_size
+            yield batch
+        batch = (x[index: index + x.shape[0] % batch_size], y[index: index + y.shape[0] % batch_size])
+        yield batch
 
-    def fit(self, x_train, y_train, x_val=None, y_val=None, learning_rate=1e-6, epochs=300, batch_size=32, normal_eq=False, bias=True):
+    def fit(self, x_train, y_train, x_val=None, y_val=None, learning_rate=1e-9, epochs=300, batch_size=32, normal_eq=False, bias=True):
         self.bias = bias
-        if bias:
-            x_train = np.hstack([np.ones((x_train.shape[0], 1)), x_train])
-        self.mean_x, self.std_x = x_train.mean(axis=0), x_train.std(axis=0)
-        self.mean_y, self.std_y = y_train.mean(axis=0), y_train.std(axis=0)
-        x_train = (x_train - self.mean_x) / (self.std_x + np.finfo(float).eps)
-        y_train = (y_train - self.mean_y) / (self.std_y + np.finfo(float).eps)
-        y_train = y_train.reshape((y_train.shape[0], 1))
         val = False
         if (x_val is None and y_val is not None) or (x_val is not None and y_val is None):
                 raise Exception("x_val and y_val need to be provided together")
         elif not (x_val is None or y_val is None):
             val = True
         self.val = val
+        x_train, y_train = self.normalize_data(x_train, y_train)
         if val:
-            if bias:
-                x_val = np.hstack([np.ones((x_val.shape[0], 1)), x_val])
-            y_val = y_val.reshape((y_val.shape[0], 1))
-            x_val = (x_val - self.mean_x) / (self.std_x + np.finfo(float).eps)
-            y_val = (y_val - self.mean_y) / (self.std_y + np.finfo(float).eps)
+            x_val, y_val = self.normalize_data(x_val, y_val, validation=True)
         if normal_eq:
-            self.w = np.dot(np.linalg.pinv(np.dot(x_train.T, x_train)), np.dot(x_train.T, y_train))
+            if bias:
+                x_train = np.hstack([np.ones((x_train.shape[0], 1)), x_train])
+            self.linear_layer = Linear(in_features=x_train.shape[1], out_features=y_train.shape[1], bias=bias)
+            self.linear_layer.w = np.dot(np.linalg.pinv(np.dot(x_train.T, x_train)), np.dot(x_train.T, y_train))
         else:
-            m, n = x_train.shape
-            self.w = np.random.uniform(size=(x_train.shape[1], 1))
-            if m >= batch_size:
-                iterations = m // batch_size + m % batch_size
-            else:
-                iterations = 1
-            if val:
-                m_val = x_val.shape[0]
-                val_loss_batch = np.zeros(shape=(m_val))
-                if m_val >= batch_size:
-                    val_iterations = m_val // batch_size + m_val % batch_size
-                else:
-                    val_iterations = 1
+            self.linear_layer = Linear(in_features=x_train.shape[1], out_features=y_train.shape[1], bias=bias)
+            self.optimizer = optim.SGD(learning_rate)
             self.losses = []
+            if val:
+                self.val_losses = []
             for e in range(epochs):
-                index = 0
+                train_gen = self.batch_generator(x_train, y_train, batch_size)
                 losses = []
-                val_losses = []
-                for i in range(iterations - 1):
-                    x_train_batch = x_train[index: index+batch_size]
-                    y_train_batch = y_train[index: index+batch_size]
-                    loss, grad = self.forward_on_batch(x_train_batch, y_train_batch, train=True)
-                    dw = np.dot(x_train_batch.T, grad)
-                    self.w = self.w - learning_rate * dw
-                    losses.append(loss)
-                    index += batch_size
-                x_train_batch = x_train[index: index + m % batch_size]
-                y_train_batch = y_train[index: index + m % batch_size]
-                loss, grad = self.forward_on_batch(x_train_batch, y_train_batch, train=True)
-                dw = np.dot(x_train_batch.T, grad)
-                self.w = self.w - learning_rate * dw
-                losses.append(loss)
+                while True:
+                    try:
+                        loss, grad = self.step(train_gen)
+                        loss = loss[0]
+                        if not np.isnan(loss):
+                            self.linear_layer.w = self.optimizer.step(self.linear_layer.w, grad)
+                            losses.append(loss)
+                        if val:
+                            val_gen = self.batch_generator(x_val, y_val, batch_size)
+                            val_losses = []
+                            while True:
+                                try:
+                                    val_loss, _ = self.step(val_gen)
+                                    val_loss = val_loss[0]
+                                    if not np.isnan(val_loss):
+                                        val_losses.append(val_loss)
+                                except:
+                                    break
+                            avg_val_loss = np.array(val_losses).mean()
+                            self.val_losses.append(avg_val_loss)
+                    except:
+                        break
+                avg_loss = np.array(losses).mean()
+                self.losses.append(avg_loss)
+                print(f"Epoch: {e+1}/{epochs}\nTraining Loss: {self.losses[-1]}")
                 if val:
-                    index = 0
-                    for i in range(val_iterations - 1):
-                        x_val_batch = x_train[index: index+batch_size]
-                        y_val_batch = y_train[index: index+batch_size]
-                        loss, grad = self.forward_on_batch(x_val_batch, y_val_batch, train=False)
-                        val_losses.append(loss)
-                        index += batch_size
-                    x_val_batch = x_train[index: index + m_val % batch_size]
-                    y_val_batch = y_train[index: index + m_val % batch_size]
-                    loss, grad = self.forward_on_batch(x_val_batch, y_val_batch, train=False)
-                    val_losses.append(loss)
-                self.losses.append(np.array(losses).mean())
-                self.val_losses.append(np.array(val_losses).mean())
-        print(f"Final Loss: {self.losses[-1]}")
-        if val:
-            print(f"Final Validation Loss: {self.val_losses[-1]}")
+                    print(f"Validation Loss: {self.val_losses[-1]}\n")
+            print(f"Final Loss: {self.losses[-1]}")
+            if val:
+                print(f"Final Validation Loss: {self.val_losses[-1]}")
 
     def plot(self):
         if len(self.losses) <= 0:
@@ -108,7 +125,7 @@ class LinearRegression:
         plt.show()
 
     def predict(self, x):
-        if self.w is None:
+        if self.linear_layer.w is None:
             print("Model not fit yet.")
             return
-        return np.dot(x, self.w)
+        return self.linear_layer.forward(x)
