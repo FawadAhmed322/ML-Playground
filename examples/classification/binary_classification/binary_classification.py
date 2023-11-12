@@ -3,8 +3,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from fawad_torch.nn import CrossEntropyLoss
 import fawad_torch.optimizers as optim
-from fawad_torch.nn import Linear, Sigmoid
-from utils.datasets import load_breast_cancer_data
+from fawad_torch.nn import Linear, Sigmoid, ReLU
+from fawad_utils.datasets import load_breast_cancer_data
 from sklearn.model_selection import train_test_split
 
 class ClassificationNetwork:
@@ -39,7 +39,7 @@ y_val = y_val.reshape((y_val.shape[0], 1))
 
 net = ClassificationNetwork()
 net.add_layer(Linear(in_features=x_train.shape[1], out_features=256))
-net.add_layer(Sigmoid())
+net.add_layer(ReLU())
 # net.add_layer(Linear(in_features=256, out_features=256))
 # net.add_layer(Sigmoid())
 net.add_layer(Linear(in_features=256, out_features=y_train.shape[1]))
@@ -48,7 +48,7 @@ net.add_optimizer(optim.SGD(learning_rate=1e-3))
 loss_fn = CrossEntropyLoss(binary=True)
 val_loss_fn = CrossEntropyLoss(binary=True)
 
-epochs = 500
+epochs = 1000
 losses = []
 val_losses = []
 preds = []
@@ -65,9 +65,11 @@ for e in range(epochs):
 plt.figure()
 plt.title("Training Loss")
 plt.plot(range(len(losses)), losses)
+plt.savefig("examples/classification/binary_classification/training_loss.png")
 
 plt.figure()
 plt.title("Validation Loss")
 plt.plot(range(len(val_losses)), val_losses)
+plt.savefig("examples/classification/binary_classification/validation_loss.png")
 
 plt.show()

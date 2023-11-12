@@ -1,7 +1,8 @@
 import numpy as np
 
 class BaseLayer:
-    def __init__(self, in_features, out_features, bias=True, trainable=True):
+    def __init__(self, in_features, out_features, bias=True, trainable=True, name=None):
+        self._name = name
         self._trainable = trainable
         self.bias = bias
         if bias:
@@ -22,3 +23,9 @@ class BaseLayer:
 
     def unfreeze(self):
         self._trainable = True
+
+    def get_name(self):
+        return self._name
+    
+    def set_name(self, name):
+        self._name = name

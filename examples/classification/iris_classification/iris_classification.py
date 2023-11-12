@@ -1,13 +1,13 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from losses.mse_loss import MSELoss
+from fawad_torch.nn import CrossEntropyLoss
 import fawad_torch.optimizers as optim
-from fawad_torch.nn import Linear, Sigmoid
-from utils.datasets import load_california_housing
+from fawad_torch.nn import Linear, ReLU, Softmax
+from fawad_utils.datasets import load_iris_data
 from sklearn.model_selection import train_test_split
 
-class RegressionNetwork:
+class ClassificationNetwork:
     def __init__(self):
         self._layers = []
         self._optimizer = None
@@ -32,20 +32,20 @@ class RegressionNetwork:
                 layer.w = self._optimizer.step(layer.w, layer.grad_weights)
         return error_tensor
 
-x, y = load_california_housing(normalize=True)
-x_train, x_val, y_train, y_val = train_test_split(x.to_numpy(), y.to_numpy(), test_size=0.3, random_state=42)
-y_train = y_train.reshape((y_train.shape[0], 1))
-y_val = y_val.reshape((y_val.shape[0], 1))
+x, y = load_iris_data(normalize=True)
+x_train, x_val, y_train, y_val = train_test_split(x, y, test_size=0.2, random_state=42)
 
-net = RegressionNetwork()
-net.add_layer(Linear(in_features=x_train.shape[1], out_features=64))
-net.add_layer(Sigmoid())
-net.add_layer(Linear(in_features=64, out_features=y_train.shape[1]))
-net.add_optimizer(optim.SGD(learning_rate=1e-4))
-loss_fn = MSELoss()
-val_loss_fn = MSELoss()
+net = ClassificationNetwork()
+net.add_layer(Linear(in_features=x_train.shape[1], out_features=64, name='Linear 1'))
+net.add_layer(ReLU(name='Relu 1'))
+net.add_layer(Linear(in_features=64, out_features=y_train.shape[1], name='Linear 2'))
+net.add_layer(Softmax(name='Softmax 1'))
+net.add_optimizer(optim.SGD(learning_rate=1e-3))
 
-epochs = 120
+loss_fn = CrossEntropyLoss()
+val_loss_fn = CrossEntropyLoss()
+
+epochs = 1000
 losses = []
 val_losses = []
 preds = []
@@ -58,13 +58,16 @@ for e in range(epochs):
     grads = net.backward(error_tensor)
     losses.append(loss)
     val_losses.append(val_loss)
+    print(loss)
 
 plt.figure()
 plt.title("Training Loss")
 plt.plot(range(len(losses)), losses)
+plt.savefig("examples/classification/iris_classification/training_loss.png")
 
 plt.figure()
 plt.title("Validation Loss")
 plt.plot(range(len(val_losses)), val_losses)
+plt.savefig("examples/classification/iris_classification/validation_loss.png")
 
 plt.show()

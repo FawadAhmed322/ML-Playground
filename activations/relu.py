@@ -1,17 +1,17 @@
 from activations.base import BaseActivation
 import numpy as np
 
-class Sigmoid(BaseActivation):
+class ReLU(BaseActivation):
     def __init__(self, name=None):
         super().__init__(name=name)
 
     def forward(self, z, train=True):
-        out = 1 / (1 + np.exp(-z))
+        z[z < 0] = 0
+        out = z
         if train:
             self.out = out
         return out
     
     def backward(self, error_tensor):
-        inner_grad = self.out * (1 - self.out)
-        grad = error_tensor * inner_grad
+        grad = error_tensor * (self.out > 0)
         return grad

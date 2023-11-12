@@ -2,8 +2,8 @@ import numpy as np
 from layers.base import BaseLayer
 
 class Linear(BaseLayer):
-    def __init__(self, in_features, out_features, bias=True, trainable=True):
-        super().__init__(in_features, out_features, bias, trainable)
+    def __init__(self, in_features, out_features, bias=True, trainable=True, name=None):
+        super().__init__(in_features, out_features, bias, trainable, name)
     
     def forward(self, x, train=True):
         if self.bias:
