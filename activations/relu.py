@@ -1,7 +1,6 @@
-from activations.base import BaseActivation
-import numpy as np
+from activations.base import BaseActivation as _BaseActivation
 
-class ReLU(BaseActivation):
+class ReLU(_BaseActivation):
     def __init__(self, name=None):
         super().__init__(name=name)
 

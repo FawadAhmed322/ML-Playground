@@ -1,7 +1,7 @@
-from activations.base import BaseActivation
+from activations.base import BaseActivation as _BaseActivation
 import numpy as np
 
-class Softmax(BaseActivation):
+class Softmax(_BaseActivation):
     def __init__(self, name=None, loops=False):
         super().__init__(name=name)
         self.loops = loops

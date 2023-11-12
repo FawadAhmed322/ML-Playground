@@ -1,9 +1,10 @@
 import numpy as np
 
 class BaseLayer:
-    def __init__(self, in_features, out_features, bias=True, trainable=True, name=None):
+    def __init__(self, in_features, out_features, bias=True, trainable=True, optimizer=None, name=None):
         self._name = name
         self._trainable = trainable
+        self._optimizer = optimizer
         self.bias = bias
         if bias:
             in_features = in_features + 1
@@ -29,3 +30,6 @@ class BaseLayer:
     
     def set_name(self, name):
         self._name = name
+
+    def add_optimizer(self, optimizer):
+        self._optimizer = optimizer

@@ -1,22 +1,20 @@
-import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
-from fawad_torch.nn import CrossEntropyLoss
+from fawad_torch.nn import Linear, ReLU, Softmax, CrossEntropyLoss
 import fawad_torch.optimizers as optim
-from fawad_torch.nn import Linear, ReLU, Softmax
 from fawad_utils.datasets import load_iris_data
 from sklearn.model_selection import train_test_split
 
 class ClassificationNetwork:
     def __init__(self):
         self._layers = []
-        self._optimizer = None
 
     def add_layer(self, node):
         self._layers.append(node)
 
     def add_optimizer(self, optimizer):
-        self._optimizer = optimizer
+        for layer in self._layers:
+            if layer.is_trainable():
+                layer.add_optimizer(optimizer(learning_rate=1e-3))
 
     def forward(self, x, train=True):
         for layer in self._layers:
@@ -26,10 +24,6 @@ class ClassificationNetwork:
     def backward(self, error_tensor):
         for layer in self._layers[::-1]:
             error_tensor = layer.backward(error_tensor)
-            if layer.is_trainable():
-                if self._optimizer is None:
-                    print("Must add optimizer using add_optimizer function")
-                layer.w = self._optimizer.step(layer.w, layer.grad_weights)
         return error_tensor
 
 x, y = load_iris_data(normalize=True)
@@ -40,7 +34,7 @@ net.add_layer(Linear(in_features=x_train.shape[1], out_features=64, name='Linear
 net.add_layer(ReLU(name='Relu 1'))
 net.add_layer(Linear(in_features=64, out_features=y_train.shape[1], name='Linear 2'))
 net.add_layer(Softmax(name='Softmax 1'))
-net.add_optimizer(optim.SGD(learning_rate=1e-3))
+net.add_optimizer(optim.RMSprop)
 
 loss_fn = CrossEntropyLoss()
 val_loss_fn = CrossEntropyLoss()

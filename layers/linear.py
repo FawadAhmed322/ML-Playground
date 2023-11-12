@@ -1,9 +1,9 @@
+from layers.base import BaseLayer as _BaseLayer
 import numpy as np
-from layers.base import BaseLayer
 
-class Linear(BaseLayer):
-    def __init__(self, in_features, out_features, bias=True, trainable=True, name=None):
-        super().__init__(in_features, out_features, bias, trainable, name)
+class Linear(_BaseLayer):
+    def __init__(self, in_features, out_features, bias=True, trainable=True, optimizer=None, name=None):
+        super().__init__(in_features, out_features, bias, trainable, optimizer, name)
     
     def forward(self, x, train=True):
         if self.bias:
@@ -14,8 +14,13 @@ class Linear(BaseLayer):
         return out
 
     def backward(self, error_tensor):
-        self.grad_weights = np.dot(self._x.T, error_tensor)
         grad_input = np.dot(error_tensor, self.w.T)[:, 1:]
+        if self.is_trainable():
+            if self._optimizer is not None:
+                grad_weights = np.dot(self._x.T, error_tensor)
+                self.w = self._optimizer.step(self.w, grad_weights)
+            else:
+                raise Exception("Trainable Layer must have optimizer passed to it.")
         return grad_input
     
 if __name__ == '__main__':

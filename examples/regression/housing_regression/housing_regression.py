@@ -1,12 +1,9 @@
-import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 from losses.mse_loss import MSELoss
 import fawad_torch.optimizers as optim
 from fawad_torch.nn import Linear, ReLU
 from fawad_utils.datasets import load_california_housing
 from sklearn.model_selection import train_test_split
-import os
 
 class RegressionNetwork:
     def __init__(self):
